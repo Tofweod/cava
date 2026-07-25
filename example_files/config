@@ -188,7 +188,7 @@
 
 # Only valid if orientation is set to 'horizontal'.
 # Set 'horizontal_stereo' to 1 to have left channel bars at top and right channel at bottom.
-# Set 'left_bottom' to 0 to have right channel at top and left channel at bottom.
+# Set 'left_bottom' to 1 to have right channel at top and left channel at bottom.
 ; horizontal_stereo = 0
 ; left_bottom = 1
 
