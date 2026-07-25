@@ -482,8 +482,12 @@ bool validate_config(struct config_params *p, struct error_s *error) {
             write_errorf(error, "only noncurses output supports horizontal stereo\n");
             return false;
         }
+        if (p->orientation != ORIENT_SPLIT_H) {
+            write_errorf(error, "only vertical orientation supports horizontal stereo\n");
+            return false;
+        }
         if (strcmp(monoOption, "average")) {
-            write_errorf(error, "horizontal stereo only supports mono option: average\n");
+            write_errorf(error, "only mono option average supports horizontal stereo\n");
             return false;
         }
     }
