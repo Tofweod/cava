@@ -989,17 +989,28 @@ Keys:\n\
             memset(bars_left, 0, sizeof(float) * number_of_bars / output_channels);
             memset(bars_right, 0, sizeof(float) * number_of_bars / output_channels);
 
-            bars = (int *)malloc(number_of_bars * sizeof(int));
+            if (p.horizontal_stereo) {
+                bars = (int *)malloc(2 * number_of_bars * sizeof(int));
+                previous_frame = (int *)malloc(2 * number_of_bars * sizeof(int));
+            } else {
+                bars = (int *)malloc(number_of_bars * sizeof(int));
+                previous_frame = (int *)malloc(number_of_bars * sizeof(int));
+            }
             bars_raw = (float *)malloc(number_of_bars * sizeof(float));
             previous_bars_raw = (float *)malloc(number_of_bars * sizeof(float));
-            previous_frame = (int *)malloc(number_of_bars * sizeof(int));
             cava_out = (double *)malloc(number_of_bars * audio.channels / output_channels *
                                         sizeof(double));
 
-            memset(bars, 0, sizeof(int) * number_of_bars);
+            if (p.horizontal_stereo) {
+                memset(bars, 0, 2 * sizeof(int) * number_of_bars);
+                memset(previous_frame, 0, 2 * sizeof(int) * number_of_bars);
+            } else {
+                memset(bars, 0, sizeof(int) * number_of_bars);
+                memset(previous_frame, 0, sizeof(int) * number_of_bars);
+            }
+
             memset(bars_raw, 0, sizeof(float) * number_of_bars);
             memset(previous_bars_raw, 0, sizeof(float) * number_of_bars);
-            memset(previous_frame, 0, sizeof(int) * number_of_bars);
             memset(cava_out, 0, sizeof(double) * number_of_bars * audio.channels / output_channels);
 
             if (p.split_stereo) {
@@ -1458,7 +1469,7 @@ Keys:\n\
                                         bars_raw[number_of_bars - n - 1] = bars_right[n];
                                     }
                                 } else {
-                                    if (p.mono_opt == AVERAGE) {
+                                    if (p.mono_opt == AVERAGE && !p.horizontal_stereo) {
                                         bars_raw[n] = (bars_left[n] + bars_right[n]) / 2;
                                     } else if (p.mono_opt == LEFT) {
                                         bars_raw[n] = bars_left[n];
@@ -1474,11 +1485,22 @@ Keys:\n\
                 int re_paint = 0;
 #endif
                 for (int n = 0; n < number_of_bars; n++) {
-                    bars[n] = bars_raw[n];
+                    if (p.horizontal_stereo) {
+                        bars[n] = bars_left[n];
+                        bars[n + number_of_bars] = bars_right[n];
+                    } else {
+                        bars[n] = bars_raw[n];
+                    }
                     // show idle bar heads
                     if (output_mode != OUTPUT_RAW && output_mode != OUTPUT_NORITAKE &&
                         bars[n] < 1 && p.waveform == 0 && p.show_idle_bar_heads == 1)
                         bars[n] = 1;
+
+                    if (p.horizontal_stereo && output_mode != OUTPUT_RAW &&
+                        output_mode != OUTPUT_NORITAKE && bars[n + number_of_bars] < 1 &&
+                        p.waveform == 0 && p.show_idle_bar_heads == 1)
+                        bars[n + number_of_bars] = 1;
+
 #ifdef SDL_GLSL
 
                     if (output_mode == OUTPUT_SDL_GLSL)
@@ -1541,11 +1563,22 @@ Keys:\n\
                             }
 
                         } else {
-                            // pure mirrored split, same bars for both sides
                             if (p.orientation == ORIENT_SPLIT_H) {
-                                rc = draw_terminal_noncurses(bars, previous_frame, ORIENT_BOTTOM,
-                                                             &p);
-                                rc = draw_terminal_noncurses(bars, previous_frame, ORIENT_TOP, &p);
+                                if (p.horizontal_stereo) {
+                                    rc = draw_terminal_noncurses(bars, previous_frame,
+                                                                 ORIENT_BOTTOM, &p);
+                                    rc = draw_terminal_noncurses(bars + number_of_bars,
+                                                                 previous_frame + number_of_bars,
+                                                                 ORIENT_TOP, &p);
+                                }
+                                // pure mirrored split, same bars for both sides
+                                else {
+                                    rc = draw_terminal_noncurses(bars, previous_frame,
+                                                                 ORIENT_BOTTOM, &p);
+                                    rc = draw_terminal_noncurses(bars, previous_frame, ORIENT_TOP,
+                                                                 &p);
+                                }
+
                             } else if (p.orientation == ORIENT_SPLIT_V) {
                                 rc = draw_terminal_noncurses(bars, previous_frame, ORIENT_LEFT, &p);
                                 rc =
@@ -1601,7 +1634,12 @@ Keys:\n\
                     should_quit = true;
                 }
 
-                memcpy(previous_frame, bars, number_of_bars * sizeof(int));
+                if (p.horizontal_stereo) {
+                    memcpy(previous_frame, bars, 2 * number_of_bars * sizeof(int));
+                } else {
+                    memcpy(previous_frame, bars, number_of_bars * sizeof(int));
+                }
+
                 if (p.output == OUTPUT_SDL_GLSL) {
                     memcpy(previous_bars_raw, bars_raw, number_of_bars * sizeof(float));
                 }

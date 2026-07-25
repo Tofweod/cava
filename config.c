@@ -476,8 +476,16 @@ bool validate_config(struct config_params *p, struct error_s *error) {
             return false;
         }
         p->orientation = ORIENT_SPLIT_V;
-        p->left_bottom = 1; // this setting is used to flip channels in horizontal split mode, makes
-                            // no sense here. forcing this to 1 puts left on left and right on right
+    }
+    if (p->horizontal_stereo) {
+        if (p->output != OUTPUT_NONCURSES) {
+            write_errorf(error, "only noncurses output supports horizontal stereo\n");
+            return false;
+        }
+        if (strcmp(monoOption, "average")) {
+            write_errorf(error, "horizontal stereo only supports mono option: average\n");
+            return false;
+        }
     }
     if (p->orientation != ORIENT_SPLIT_V && p->orientation != ORIENT_SPLIT_H) {
         p->split_stereo = 0;
@@ -855,6 +863,7 @@ bool load_config(char configPath[PATH_MAX], struct config_params *p, struct erro
     monoOption = strdup(iniparser_getstring(ini, "output:mono_option", "average"));
     p->reverse = iniparser_getint(ini, "output:reverse", 0);
     p->split_stereo = iniparser_getint(ini, "output:split_stereo", 0);
+    p->horizontal_stereo = iniparser_getint(ini, "output:horizontal_stereo", 0);
     p->left_bottom = iniparser_getint(ini, "output:left_bottom", 0);
     p->raw_target = strdup(iniparser_getstring(ini, "output:raw_target", "/dev/stdout"));
     p->data_format = strdup(iniparser_getstring(ini, "output:data_format", "binary"));
@@ -1050,6 +1059,9 @@ bool load_config(char configPath[PATH_MAX], struct config_params *p, struct erro
     p->frame_delim = (char)GetPrivateProfileInt("output", "frame_delimiter", 10, configPath);
     p->ascii_range = GetPrivateProfileInt("output", "ascii_max_range", 1000, configPath);
     p->bit_format = GetPrivateProfileInt("output", "bit_format", 16, configPath);
+
+    p->horizontal_stereo = GetPrivateProfileInt("output", "horizontal_stereo", 0, configPath);
+    p->left_bottom = GetPrivateProfileInt("output", "left_bottom", 0, configPath);
 
     p->sdl_width = GetPrivateProfileInt("output", "sdl_width", 1000, configPath);
     p->sdl_height = GetPrivateProfileInt("output", "sdl_height", 500, configPath);
